@@ -1,4 +1,4 @@
-﻿// LexicalAnalyzer.cs
+
 using System.Text;
 
 namespace PascalCompiler
@@ -69,7 +69,7 @@ namespace PascalCompiler
 
         private byte ScanCharConstant()
         {
-            InputOutput.NextChar(); // Пропускаем первую кавычку
+            InputOutput.NextChar(); 
 
             if (InputOutput.Ch == '\0')
             {
@@ -77,7 +77,7 @@ namespace PascalCompiler
                 return charc;
             }
 
-            InputOutput.NextChar(); // Читаем символ
+            InputOutput.NextChar(); 
 
             if (InputOutput.Ch != '\'')
             {
@@ -87,7 +87,7 @@ namespace PascalCompiler
             }
 
             if (InputOutput.Ch != '\0')
-                InputOutput.NextChar(); // Пропускаем закрывающую кавычку
+                InputOutput.NextChar(); 
 
             return charc;
         }
