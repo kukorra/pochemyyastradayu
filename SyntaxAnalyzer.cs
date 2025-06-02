@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -26,7 +26,6 @@ namespace PascalCompiler
                 if (trimmed.StartsWith("//") || trimmed.StartsWith("{") || string.IsNullOrWhiteSpace(trimmed))
                     continue;
 
-                // Handle const section
                 if (trimmed == "const")
                 {
                     i++;
@@ -45,7 +44,6 @@ namespace PascalCompiler
                     continue;
                 }
 
-                // Handle var section
                 if (trimmed == "var")
                 {
                     i++;
@@ -64,7 +62,6 @@ namespace PascalCompiler
                     continue;
                 }
 
-                // Check for assignment with '=' instead of ':='
                 if (line.Contains("=") && !line.Contains(":=") && !line.Contains("==") && !inCase)
                 {
                     int pos = line.IndexOf('=');
@@ -80,20 +77,17 @@ namespace PascalCompiler
                     }
                 }
 
-                // Check for invalid range syntax
                 if (line.Contains("..."))
                 {
                     int pos = line.IndexOf("...");
                     InputOutput.AddError(201, new InputOutput.TextPosition(lineNum, (byte)pos));
 
-                    // Check for multiple dots
                     if (line.Substring(pos + 3).Contains("..."))
                     {
                         InputOutput.AddError(202, new InputOutput.TextPosition(lineNum, (byte)pos));
                     }
                 }
 
-                // Case statement analysis
                 if (trimmed.StartsWith("case"))
                 {
                     inCase = true;
@@ -119,25 +113,21 @@ namespace PascalCompiler
             {
                 string labelPart = line.Split(':')[0].Trim();
 
-                // Check for constant as label
                 if (declaredConsts.Contains(labelPart.ToLower()))
                 {
                     InputOutput.AddError(106, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(labelPart)));
                 }
-                // Check for undeclared variable as label
                 else if (!labelPart.StartsWith("'") && !int.TryParse(labelPart, out _) &&
                          !labelPart.Contains("..") && !declaredVars.Contains(labelPart.ToLower()))
                 {
                     InputOutput.AddError(100, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(labelPart)));
                 }
 
-                // Check for invalid range in case
                 if (labelPart.Contains("..") && labelPart.Split(new[] { ".." }, StringSplitOptions.None).Length != 2)
                 {
                     InputOutput.AddError(105, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(labelPart)));
                 }
 
-                // Check for comparison in case
                 if (labelPart.Contains("="))
                 {
                     InputOutput.AddError(107, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(labelPart)));
