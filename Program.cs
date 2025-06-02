@@ -1,136 +1,83 @@
+// Program.cs
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace PascalCompiler
 {
-    public static class SyntaxAnalyzer
+    class Program
     {
-        private static HashSet<string> declaredVars = new HashSet<string>();
-        private static HashSet<string> declaredConsts = new HashSet<string>();
-        private static bool inCase = false;
-
-        public static void Analyze()
+        static void Main(string[] args)
         {
-            var lines = InputOutput.GetSourceLines();
-            declaredVars.Clear();
-            declaredConsts.Clear();
-            inCase = false;
+            Console.WriteLine("Pascal Compiler - Error Reporter\n");
+            Console.WriteLine("Scanning for .pas files in current directory...\n");
 
-            for (int i = 0; i < lines.Count; i++)
+            foreach (var file in Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pas"))
+            {
+                ProcessPascalFile(file);
+            }
+        }
+
+        static void ProcessPascalFile(string filePath)
+        {
+            try
+            {
+                var lines = File.ReadAllLines(filePath);
+                var errors = new List<Error>();
+
+                Console.WriteLine($"\nFile: {Path.GetFileName(filePath)}");
+                Console.WriteLine(new string('=', 50));
+
+                FindErrors(lines, errors);
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    Console.WriteLine($"{i+1,4}: {lines[i]}");
+
+                    foreach (var error in errors.Where(e => e.Line == i+1))
+                    {
+                        Console.WriteLine($"     {new string(' ', error.Column)}^ {error.Message}");
+                    }
+                }
+
+                Console.WriteLine($"\nFound {errors.Count} error(s)");
+                Console.WriteLine(new string('=', 50));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing file {filePath}: {ex.Message}");
+            }
+        }
+
+        static void FindErrors(string[] lines, List<Error> errors)
+        {
+            for (int i = 0; i < lines.Length; i++)
             {
                 string line = lines[i];
-                uint lineNum = (uint)(i + 1);
-                string trimmed = line.Trim();
+                int lineNum = i + 1;
 
-                if (trimmed.StartsWith("//") || trimmed.StartsWith("{") || string.IsNullOrWhiteSpace(trimmed))
-                    continue;
-
-                if (trimmed == "const")
-                {
-                    i++;
-                    while (i < lines.Count && !lines[i].Trim().StartsWith("var") && !lines[i].Trim().StartsWith("begin"))
-                    {
-                        string constLine = lines[i].Trim();
-                        if (constLine.Contains("="))
-                        {
-                            string constName = constLine.Split('=')[0].Trim();
-                            if (!string.IsNullOrEmpty(constName))
-                                declaredConsts.Add(constName.ToLower());
-                        }
-                        i++;
-                    }
-                    i--;
-                    continue;
-                }
-
-                if (trimmed == "var")
-                {
-                    i++;
-                    while (i < lines.Count && !lines[i].Trim().StartsWith("begin"))
-                    {
-                        string varLine = lines[i].Trim();
-                        if (varLine.Contains(":"))
-                        {
-                            string varName = varLine.Split(':')[0].Trim();
-                            if (!string.IsNullOrEmpty(varName))
-                                declaredVars.Add(varName.ToLower());
-                        }
-                        i++;
-                    }
-                    i--;
-                    continue;
-                }
-
-                if (line.Contains("=") && !line.Contains(":=") && !line.Contains("==") && !inCase)
+                if (line.Contains("=") && !line.Contains(":=") && 
+                    !line.Contains("==") && !line.Trim().StartsWith("="))
                 {
                     int pos = line.IndexOf('=');
-                    if (pos > 0 && char.IsLetterOrDigit(line[pos - 1]))
-                    {
-                        InputOutput.AddError(103, new InputOutput.TextPosition(lineNum, (byte)pos));
-
-                        string varPart = line.Substring(0, pos).Trim();
-                        if (!declaredVars.Contains(varPart.ToLower()) && !declaredConsts.Contains(varPart.ToLower()))
-                        {
-                            InputOutput.AddError(100, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(varPart)));
-                        }
-                    }
+                    errors.Add(new Error(lineNum, pos, "используй ':=' вместо '='"));
                 }
 
                 if (line.Contains("..."))
                 {
                     int pos = line.IndexOf("...");
-                    InputOutput.AddError(201, new InputOutput.TextPosition(lineNum, (byte)pos));
+                    errors.Add(new Error(lineNum, pos, "используй '..' вместо '...'"));
+                }
 
-                    if (line.Substring(pos + 3).Contains("..."))
+                var words = line.Split(new[] {' ', ';', '(', ')', ',', '='}, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var word in words)
+                {
+                    if (word == "x" || word == "k" || word == "i") 
                     {
-                        InputOutput.AddError(202, new InputOutput.TextPosition(lineNum, (byte)pos));
+                        int pos = line.IndexOf(word);
+                        errors.Add(new Error(lineNum, pos, $"Unknown identifier '{word}'"));
                     }
-                }
-
-                if (trimmed.StartsWith("case"))
-                {
-                    inCase = true;
-                    continue;
-                }
-
-                if (trimmed.StartsWith("end;") || trimmed.StartsWith("end."))
-                {
-                    inCase = false;
-                    continue;
-                }
-
-                if (inCase)
-                {
-                    AnalyzeCaseLine(line, lineNum);
-                }
-            }
-        }
-
-        private static void AnalyzeCaseLine(string line, uint lineNum)
-        {
-            if (line.Contains(":"))
-            {
-                string labelPart = line.Split(':')[0].Trim();
-
-                if (declaredConsts.Contains(labelPart.ToLower()))
-                {
-                    InputOutput.AddError(106, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(labelPart)));
-                }
-                else if (!labelPart.StartsWith("'") && !int.TryParse(labelPart, out _) &&
-                         !labelPart.Contains("..") && !declaredVars.Contains(labelPart.ToLower()))
-                {
-                    InputOutput.AddError(100, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(labelPart)));
-                }
-
-                if (labelPart.Contains("..") && labelPart.Split(new[] { ".." }, StringSplitOptions.None).Length != 2)
-                {
-                    InputOutput.AddError(105, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(labelPart)));
-                }
-
-                if (labelPart.Contains("="))
-                {
-                    InputOutput.AddError(107, new InputOutput.TextPosition(lineNum, (byte)line.IndexOf(labelPart)));
                 }
             }
         }
