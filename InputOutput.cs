@@ -1,40 +1,17 @@
-﻿using System;
+// InputOutput.cs
+using System;
 using System.Collections.Generic;
 
 namespace PascalCompiler
 {
     public static class InputOutput
     {
-        public struct TextPosition
-        {
-            public uint lineNumber;
-            public byte charNumber;
-
-            public TextPosition(uint line, byte ch)
-            {
-                lineNumber = line;
-                charNumber = ch;
-            }
-        }
-
-        public struct Error
-        {
-            public TextPosition Position;
-            public byte Code;
-
-            public Error(TextPosition position, byte code)
-            {
-                Position = position;
-                Code = code;
-            }
-        }
-
         public static char Ch { get; private set; }
         public static TextPosition PositionNow { get; private set; }
         public static uint ErrorCount { get; private set; }
 
         private static List<string> _sourceLines;
-        private static Dictionary<uint, List<Error>> _errors = new Dictionary<uint, List<Error>>();
+        private static Dictionary<uint, List<CompilerError>> _errors = new Dictionary<uint, List<CompilerError>>();
 
         public static void Initialize(string[] sourceLines)
         {
@@ -43,10 +20,12 @@ namespace PascalCompiler
             ErrorCount = 0;
             Ch = _sourceLines.Count > 0 ? _sourceLines[0][0] : '\0';
         }
-        public static Dictionary<uint, List<Error>> GetErrorDictionary()
+
+        public static Dictionary<uint, List<CompilerError>> GetErrorDictionary()
         {
             return _errors;
         }
+
         public static List<string> GetSourceLines()
         {
             return _sourceLines;
@@ -78,9 +57,9 @@ namespace PascalCompiler
         public static void AddError(byte errorCode, TextPosition position)
         {
             if (!_errors.ContainsKey(position.lineNumber))
-                _errors[position.lineNumber] = new List<Error>();
+                _errors[position.lineNumber] = new List<CompilerError>();
 
-            _errors[position.lineNumber].Add(new Error(position, errorCode));
+            _errors[position.lineNumber].Add(new CompilerError(position, errorCode));
             ErrorCount++;
         }
 
