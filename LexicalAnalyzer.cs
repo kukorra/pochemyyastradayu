@@ -16,7 +16,7 @@ namespace PascalCompiler
             lbracket = 19, rbracket = 21, notequal = 22,
             less = 23, lessequal = 24, greater = 25,
             greaterequal = 26, plus = 27, minus = 28,
-            multiply = 29, divide = 30;
+            multiply = 29, divide = 30,testIdent = 200; 
 
         private const int MinPascalInteger = -32768;
         private const int MaxPascalInteger = 32767;
@@ -115,7 +115,15 @@ namespace PascalCompiler
                 InputOutput.NextChar();
             }
 
-            if (_keywords.TryGetKeywordCode(name.ToString(), out byte keywordCode))
+            string identName = name.ToString();
+
+            if (identName.StartsWith("Test") && identName.Length > 4 &&
+                char.IsDigit(identName[4]) && int.TryParse(identName.Substring(4), out _))
+            {
+                return 200; 
+            }
+
+            if (_keywords.TryGetKeywordCode(identName, out byte keywordCode))
                 return keywordCode;
 
             return ident;
