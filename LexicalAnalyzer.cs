@@ -1,4 +1,3 @@
-
 using System.Text;
 
 namespace PascalCompiler
@@ -13,7 +12,14 @@ namespace PascalCompiler
             thensy = 52, elsesy = 32, eof = 0,
             semicolon = 14, colon = 5, equal = 16,
             assign = 51, comma = 20, point = 61,
-            twopoints = 74, range = 75;
+            range = 75, lparen = 17, rparen = 18,
+            lbracket = 19, rbracket = 21, notequal = 22,
+            less = 23, lessequal = 24, greater = 25,
+            greaterequal = 26, plus = 27, minus = 28,
+            multiply = 29, divide = 30;
+
+        private const int MinPascalInteger = -32768;
+        private const int MaxPascalInteger = 32767;
 
         private readonly Keywords _keywords = new Keywords();
 
@@ -25,6 +31,12 @@ namespace PascalCompiler
             if (InputOutput.Ch == '\0')
                 return eof;
 
+            if (InputOutput.Ch == '$' || InputOutput.Ch == '@' || InputOutput.Ch == '?' || InputOutput.Ch =='&')
+            {
+                InputOutput.AddError(103, InputOutput.PositionNow);
+                InputOutput.NextChar();
+                return eof;
+            }
             if (char.IsDigit(InputOutput.Ch))
                 return ScanNumber();
             if (char.IsLetter(InputOutput.Ch))
@@ -35,6 +47,28 @@ namespace PascalCompiler
                 return ScanAssignment();
             if (InputOutput.Ch == '.')
                 return ScanDotOrRange();
+            if (InputOutput.Ch == '<')
+                return ScanLess();
+            if (InputOutput.Ch == '>')
+                return ScanGreater();
+            if (InputOutput.Ch == '!')
+                return ScanNotEqual();
+            if (InputOutput.Ch == '(')
+                return ScanLeftParen();
+            if (InputOutput.Ch == ')')
+                return ScanRightParen();
+            if (InputOutput.Ch == '[')
+                return ScanLeftBracket();
+            if (InputOutput.Ch == ']')
+                return ScanRightBracket();
+            if (InputOutput.Ch == '+')
+                return ScanPlus();
+            if (InputOutput.Ch == '-')
+                return ScanMinus();
+            if (InputOutput.Ch == '*')
+                return ScanMultiply();
+            if (InputOutput.Ch == '/')
+                return ScanDivide();
 
             return ScanSpecialSymbol();
         }
@@ -47,14 +81,34 @@ namespace PascalCompiler
 
         private byte ScanNumber()
         {
+            StringBuilder numberBuilder = new StringBuilder();
+            TextPosition startPos = InputOutput.PositionNow;
+
             while (char.IsDigit(InputOutput.Ch))
+            {
+                numberBuilder.Append(InputOutput.Ch);
                 InputOutput.NextChar();
+            }
+
+            if (long.TryParse(numberBuilder.ToString(), out long number))
+            {
+                if (number < MinPascalInteger || number > MaxPascalInteger)
+                {
+                    InputOutput.AddError(102, startPos);
+                }
+            }
+            else
+            {
+                InputOutput.AddError(102, startPos);
+            }
+
             return intc;
         }
 
         private byte ScanIdentifierOrKeyword()
         {
             StringBuilder name = new StringBuilder();
+
             while (char.IsLetterOrDigit(InputOutput.Ch))
             {
                 name.Append(InputOutput.Ch);
@@ -69,25 +123,26 @@ namespace PascalCompiler
 
         private byte ScanCharConstant()
         {
-            InputOutput.NextChar(); 
+            InputOutput.NextChar();
+            TextPosition startPos = InputOutput.PositionNow;
 
             if (InputOutput.Ch == '\0')
             {
-                InputOutput.AddError(101, InputOutput.PositionNow);
+                InputOutput.AddError(101, startPos);
                 return charc;
             }
 
-            InputOutput.NextChar(); 
+            InputOutput.NextChar();
 
             if (InputOutput.Ch != '\'')
             {
-                InputOutput.AddError(101, InputOutput.PositionNow);
+                InputOutput.AddError(101, startPos);
                 while (InputOutput.Ch != '\'' && InputOutput.Ch != '\0')
                     InputOutput.NextChar();
             }
 
             if (InputOutput.Ch != '\0')
-                InputOutput.NextChar(); 
+                InputOutput.NextChar();
 
             return charc;
         }
@@ -112,6 +167,93 @@ namespace PascalCompiler
                 return range;
             }
             return point;
+        }
+
+        private byte ScanLess()
+        {
+            InputOutput.NextChar();
+            if (InputOutput.Ch == '=')
+            {
+                InputOutput.NextChar();
+                return lessequal;
+            }
+            if (InputOutput.Ch == '>')
+            {
+                InputOutput.NextChar();
+                return notequal;
+            }
+            return less;
+        }
+
+        private byte ScanGreater()
+        {
+            InputOutput.NextChar();
+            if (InputOutput.Ch == '=')
+            {
+                InputOutput.NextChar();
+                return greaterequal;
+            }
+            return greater;
+        }
+
+        private byte ScanNotEqual()
+        {
+            InputOutput.NextChar();
+            if (InputOutput.Ch == '=')
+            {
+                InputOutput.NextChar();
+                return notequal;
+            }
+            InputOutput.AddError(100, InputOutput.PositionNow);
+            return eof;
+        }
+
+        private byte ScanLeftParen()
+        {
+            InputOutput.NextChar();
+            return lparen;
+        }
+
+        private byte ScanRightParen()
+        {
+            InputOutput.NextChar();
+            return rparen;
+        }
+
+        private byte ScanLeftBracket()
+        {
+            InputOutput.NextChar();
+            return lbracket;
+        }
+
+        private byte ScanRightBracket()
+        {
+            InputOutput.NextChar();
+            return rbracket;
+        }
+
+        private byte ScanPlus()
+        {
+            InputOutput.NextChar();
+            return plus;
+        }
+
+        private byte ScanMinus()
+        {
+            InputOutput.NextChar();
+            return minus;
+        }
+
+        private byte ScanMultiply()
+        {
+            InputOutput.NextChar();
+            return multiply;
+        }
+
+        private byte ScanDivide()
+        {
+            InputOutput.NextChar();
+            return divide;
         }
 
         private byte ScanSpecialSymbol()
