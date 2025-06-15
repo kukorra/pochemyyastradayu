@@ -1,4 +1,4 @@
-// InputOutput.cs
+
 using System;
 using System.Collections.Generic;
 
@@ -54,14 +54,17 @@ namespace PascalCompiler
             }
         }
 
-        public static void AddError(byte errorCode, TextPosition position)
+        public static void AddError(byte code, TextPosition position)
         {
+            var error = new CompilerError(position, code);
+
             if (!_errors.ContainsKey(position.lineNumber))
                 _errors[position.lineNumber] = new List<CompilerError>();
 
-            _errors[position.lineNumber].Add(new CompilerError(position, errorCode));
+            _errors[position.lineNumber].Add(error);
             ErrorCount++;
         }
+
 
         public static void PrintAllErrors()
         {
